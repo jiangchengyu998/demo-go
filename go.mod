@@ -5,6 +5,7 @@ go 1.22
 require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/prometheus/client_golang v1.20.5
+	go.opentelemetry.io/contrib/propagators/b3 v1.29.0
 	go.opentelemetry.io/otel v1.29.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.29.0
 	go.opentelemetry.io/otel/sdk v1.29.0
