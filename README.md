@@ -113,8 +113,8 @@ go build ./cmd/demo-go
 
 ## 一键部署平台构建
 
-当前仓库不提交 Dockerfile，让平台使用 Cloud Native Buildpacks 构建镜像。`Procfile` 指定默认 Web
-进程为 `demo-go`，启动时会读取 `PORT` 或 `SERVER_PORT`，默认监听 `8000`。
+当前仓库提供标准多阶段 `Dockerfile`，用于让一键部署平台稳定构建 Go 镜像。容器启动时会读取
+`PORT` 或 `SERVER_PORT`，默认监听 `8000`。
 
 Kubernetes/Helm 侧建议配置：
 

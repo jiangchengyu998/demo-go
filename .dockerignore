@@ -1,0 +1,7 @@
+.git
+.idea
+.env
+*.out
+*.test
+coverage.*
+demo-go
