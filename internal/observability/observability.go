@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -39,11 +40,6 @@ func ConfigureTracing(ctx context.Context, settings config.Settings) (func(conte
 		return func(context.Context) error { return nil }, nil
 	}
 
-	exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(settings.OTELTracesEndpoint))
-	if err != nil {
-		return nil, err
-	}
-
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			attribute.String("service.name", settings.AppName),
@@ -54,11 +50,21 @@ func ConfigureTracing(ctx context.Context, settings config.Settings) (func(conte
 		return nil, err
 	}
 
-	provider := tracesdk.NewTracerProvider(
-		tracesdk.WithBatcher(exporter),
+	options := []tracesdk.TracerProviderOption{
 		tracesdk.WithSampler(tracesdk.TraceIDRatioBased(settings.TracingSamplingProbability)),
 		tracesdk.WithResource(res),
-	)
+	}
+	if settings.OTELExporterDisabled {
+		slog.Info("OTEL exporter disabled; trace IDs will still be generated")
+	} else {
+		exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(settings.OTELTracesEndpoint))
+		if err != nil {
+			return nil, err
+		}
+		options = append(options, tracesdk.WithBatcher(exporter))
+	}
+
+	provider := tracesdk.NewTracerProvider(options...)
 	otel.SetTracerProvider(provider)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
@@ -71,6 +77,33 @@ func ConfigureTracing(ctx context.Context, settings config.Settings) (func(conte
 		)
 	}
 	return provider.Shutdown, nil
+}
+
+func NewTraceLogger(output io.Writer) *slog.Logger {
+	return slog.New(traceHandler{
+		Handler: slog.NewJSONHandler(output, &slog.HandlerOptions{Level: slog.LevelInfo}),
+	})
+}
+
+type traceHandler struct {
+	slog.Handler
+}
+
+func (h traceHandler) Handle(ctx context.Context, record slog.Record) error {
+	traceID, spanID := traceFields(trace.SpanContextFromContext(ctx))
+	record.AddAttrs(
+		slog.String("traceId", traceID),
+		slog.String("spanId", spanID),
+	)
+	return h.Handler.Handle(ctx, record)
+}
+
+func (h traceHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return traceHandler{Handler: h.Handler.WithAttrs(attrs)}
+}
+
+func (h traceHandler) WithGroup(name string) slog.Handler {
+	return traceHandler{Handler: h.Handler.WithGroup(name)}
 }
 
 func HTTPMiddleware(next http.Handler, logger *slog.Logger) http.Handler {
@@ -95,14 +128,11 @@ func HTTPMiddleware(next http.Handler, logger *slog.Logger) http.Handler {
 			attribute.Int("http.response.status_code", recorder.status),
 		)
 
-		traceID, spanID := traceFields(span.SpanContext())
-		logger.Info("HTTP trace",
+		logger.InfoContext(ctx, "HTTP trace",
 			"method", r.Method,
 			"uri", r.URL.Path,
 			"status", recorder.status,
 			"durationMs", duration.Milliseconds(),
-			"traceId", traceID,
-			"spanId", spanID,
 		)
 	})
 }

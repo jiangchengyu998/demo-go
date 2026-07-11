@@ -27,6 +27,7 @@ type Settings struct {
 	OTELTracesEndpoint         string
 	OTELDebugLoggingEnabled    bool
 	OTELSDKDisabled            bool
+	OTELExporterDisabled       bool
 	TracingSamplingProbability float64
 	Database                   DatabaseSettings
 }
@@ -60,6 +61,7 @@ func Load() (Settings, error) {
 		OTELTracesEndpoint:         getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", defaultOTELEndpoint),
 		OTELDebugLoggingEnabled:    envBool("OTEL_DEBUG_LOGGING_ENABLED", true),
 		OTELSDKDisabled:            otelSDKDisabled(environment),
+		OTELExporterDisabled:       otelExporterDisabled(environment),
 		TracingSamplingProbability: sampling,
 		Database:                   database,
 	}, nil
@@ -184,6 +186,10 @@ func otelSDKDisabled(environment string) bool {
 	if value, ok := os.LookupEnv("OTEL_SDK_DISABLED"); ok {
 		return parseBool(value)
 	}
+	return false
+}
+
+func otelExporterDisabled(environment string) bool {
 	return environment == defaultEnvironment && os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") == ""
 }
 

@@ -89,7 +89,7 @@ func (s *Service) List(ctx context.Context, page, size int, sort string) (Page, 
 		First:         page == 0,
 		Last:          totalPages == 0 || page >= totalPages-1,
 	}
-	s.logger.Info("ItemService.list", "page", page, "size", size, "totalElements", total)
+	s.logger.InfoContext(ctx, "ItemService.list", "page", page, "size", size, "totalElements", total)
 	return response, nil
 }
 
@@ -103,7 +103,7 @@ func (s *Service) Get(ctx context.Context, id int64) (Item, error) {
 		span.RecordError(err)
 		return Item{}, err
 	}
-	s.logger.Info("ItemService.get", "id", id)
+	s.logger.InfoContext(ctx, "ItemService.get", "id", id)
 	return item, nil
 }
 
@@ -121,7 +121,7 @@ func (s *Service) Create(ctx context.Context, request Request) (Item, error) {
 		span.RecordError(err)
 		return Item{}, err
 	}
-	s.logger.Info("ItemService.create", "id", item.ID, "name", item.Name)
+	s.logger.InfoContext(ctx, "ItemService.create", "id", item.ID, "name", item.Name)
 	return item, nil
 }
 
@@ -139,7 +139,7 @@ func (s *Service) Update(ctx context.Context, id int64, request Request) (Item, 
 		span.RecordError(err)
 		return Item{}, err
 	}
-	s.logger.Info("ItemService.update", "id", item.ID, "name", item.Name)
+	s.logger.InfoContext(ctx, "ItemService.update", "id", item.ID, "name", item.Name)
 	return item, nil
 }
 
@@ -152,7 +152,7 @@ func (s *Service) Delete(ctx context.Context, id int64) error {
 		span.RecordError(err)
 		return err
 	}
-	s.logger.Info("ItemService.delete", "id", id)
+	s.logger.InfoContext(ctx, "ItemService.delete", "id", id)
 	return nil
 }
 
